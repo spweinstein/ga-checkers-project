@@ -11,6 +11,14 @@ div.game > div.cell.dark {
   background-color: brown;
 }
 
+div.game > div.cell.selected {
+  background-color: green;
+}
+
+div.game > div.cell.possible-move {
+  background-color: rgba(0, 128, 0, 0.3);
+}
+
 div.game div.cell {
   display: flex;
   align-items: center;
