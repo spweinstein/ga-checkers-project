@@ -13,16 +13,17 @@ const msgCell = document.querySelector("#message");
 /*===========================VARIABLES=======================*/
 let turn = players[0];
 let selectedPieceIndex = null;
-let isWinner = false;
+let winner = false;
 let isTie = false;
 
 const state = {
   boardValues,
   boardCells,
-  isWinner,
+  winner,
   isTie,
   selectedPieceIndex,
   possibleMoveIndices,
+  possibleJumps,
 };
 
 /*===========================GRID HELPER FUNCTIONS=======================*/
@@ -118,6 +119,11 @@ function getEmptyDiagonalNeighbors(cellId) {
 
 function initialize() {
   let columnIndex = 0;
+  winner = false;
+  isTie = false;
+  selectedPieceIndex = null;
+  possibleMoveIndices.splice(0, possibleMoveIndices.length);
+  Object.keys(possibleJumps).forEach((key) => delete possibleJumps[key]);
   for (let i = 0; i < 64; i++) {
     const isCellEven = i % 2 === 0;
     const rowIndex = getRowIndex(i);
@@ -185,7 +191,11 @@ function render() {
   });
 
   // updateSelected();
-  updateMessage(`It is player ${turn}'s turn`);
+  if (winner)
+    updateMessage(
+      `Congratulations, player ${winner}! Hit reset to play again.`
+    );
+  else updateMessage(`It is player ${turn}'s turn`);
 }
 
 /*===========================LOGIC=======================*/
@@ -221,6 +231,8 @@ function movePiece(fromIdx, toIdx) {
   switchPlayerTurn();
   unselectPiece();
 }
+
+function basicMove(fromIdx, toIdx) {}
 
 function hasDoubleJump(fromIdx) {}
 
@@ -289,7 +301,15 @@ function unselectPiece() {
   Object.keys(possibleJumps).forEach((key) => delete possibleJumps[key]);
 }
 
-function checkForWinner() {}
+function checkForWinner() {
+  const boardString = boardValues.join(" ");
+  if (!boardString.includes(players[0])) {
+    winner = players[1];
+  } else if (!boardString.includes(players[1])) {
+    winner = players[0];
+  }
+  console.log(`Checking for winner....${winner}`);
+}
 
 function checkForTie() {}
 
@@ -302,6 +322,7 @@ initialize();
 /*===========================EVENT LISTENERS=======================*/
 
 function handleClick(event) {
+  if (winner) return;
   const el = event.currentTarget;
   const cellIndex = el.id * 1;
   const cell = boardCells[cellIndex];
@@ -339,3 +360,16 @@ function handleClick(event) {
 document.querySelectorAll("#game div.cell").forEach((cell) => {
   cell.addEventListener("click", handleClick);
 });
+
+document.querySelector("#reset").addEventListener("click", initialize);
+
+/*=================TEST FUNCTIONS======*/
+
+function clearPlayerPieces(playerIdx = 0) {
+  boardValues.forEach((val, i) => {
+    if (val.includes(players[playerIdx])) boardValues[i] = "";
+  });
+  checkForWinner();
+  checkForTie();
+  render();
+}

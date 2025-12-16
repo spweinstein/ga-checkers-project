@@ -48,6 +48,29 @@ div.cell.has-piece.King > div {
 
 div#message {
   width: 500px;
-  height: 50px;
-  font-size: 2rem;
+  font-size: 1.5rem;
+}
+
+header,
+footer {
+  margin: 20px 0;
+  width: 500px;
+  text-align: center;
+  background-color: beige;
+}
+
+#reset {
+  font-size: 1.5rem;
+  border: 5px solid orange;
+  border-radius: 10%;
+  background-color: rgba(255, 165, 0, 0.5); /*rgba(187, 141, 73, 0.5);*/
+  cursor: pointer;
+}
+
+footer,
+header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
 }
