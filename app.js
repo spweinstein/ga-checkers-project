@@ -5,15 +5,26 @@
 const players = ["White", "Black"];
 const pieceTypes = ["Regular", "King"];
 const boardValues = [];
+const possibleMoveIndices = [];
+const possibleMoveSquares = [];
 const boardCells = document.querySelectorAll("div.game > div.cell");
+const msgCell = document.querySelector("#message");
 
 /*===========================VARIABLES=======================*/
 let turn = players[0];
-let selectedPiece = null;
+let selectedPieceIndex = null;
 let isWinner = false;
 let isTie = false;
 
-const state = { boardValues, boardCells, isWinner, isTie };
+const state = {
+  boardValues,
+  boardCells,
+  isWinner,
+  isTie,
+  selectedPieceIndex,
+  possibleMoveIndices,
+  possibleMoveSquares,
+};
 
 /*===========================GRID HELPER FUNCTIONS=======================*/
 
@@ -54,7 +65,18 @@ function isInLastRow(cellId) {
 //add backwards king functionality later
 function getAdjacentRows(cellId) {
   const rowIndex = getRowIndex(cellId);
-  const idxs = [rowIndex + 1, rowIndex - 1].filter(filterIndex);
+  const cellValue = boardValues[cellId];
+  const [player, pieceType] = cellValue.split("_");
+  const [nextRowIdx, prevRowIdx] = [rowIndex + 1, rowIndex - 1];
+  const idxs = [];
+  if (pieceType === "King") {
+    if (nextRowIdx <= 7) idxs.push(nextRowIdx);
+    if (prevRowIdx >= 0) idxs.push(prevRowIdx);
+  } else if (turn === players[0] && nextRowIdx <= 7) {
+    idxs.push(nextRowIdx);
+  } else if (turn === players[1] && prevRowIdx >= 0) {
+    idxs.push(prevRowIdx);
+  }
   return idxs;
 }
 
@@ -68,9 +90,7 @@ function getAdjacentCols(cellId) {
 }
 
 function getDiagonalNeighbors(cellId) {
-  const cellValue = boardValues[cellId];
-  const [player, pieceType] = cellValue.split("_");
-  const adjRows = getAdjacentRows(cellId, player);
+  const adjRows = getAdjacentRows(cellId);
   const adjCols = getAdjacentCols(cellId);
   const neighbors = adjRows
     .map((rowIdx) => {
@@ -128,7 +148,43 @@ function initialize() {
 
 /*===========================RENDER=======================*/
 
+/*
+  updateSelected()
+  Updates the DOM to reflect the change in selected piece, if any
+  Also updates possible moves
+*/
+
+function updateSelected() {
+  console.log("Updating selected element + possible moves...");
+  if (selectedPieceIndex === null) return;
+  const prevElem = document.querySelector("div.selected");
+  if (prevElem) prevElem.classList.toggle("selected");
+  const newElem = boardCells[selectedPieceIndex];
+  newElem.classList.toggle("selected");
+  possibleMoveSquares.forEach((square) =>
+    square.classList.remove("possible-move")
+  );
+  possibleMoveSquares.splice(
+    0,
+    possibleMoveSquares.length,
+    ...possibleMoveIndices.map((squareIndex) => {
+      const cell = boardCells[squareIndex];
+      cell.classList.add("possible-move");
+      return cell;
+    })
+  );
+}
+
+function updateCell(cellIndex) {
+  const cellValue = boardValues[index];
+}
+
+function updateMessage(msg) {
+  msgCell.textContent = msg;
+}
+
 function render() {
+  console.log("Rendering...");
   boardCells.forEach((cell, index) => {
     const cellValue = boardValues[index];
     if (cellValue.startsWith(players[0])) {
@@ -145,9 +201,12 @@ function render() {
       cell.classList.remove("has-piece", "black", "white", "king");
     }
   });
+
+  updateSelected();
+  updateMessage(`It is player ${turn}'s turn`);
 }
 
-/*===========================GAME LOGIC=======================*/
+/*===========================LOGIC=======================*/
 function addPiece(index, player, pieceType) {
   boardValues[index] = `${player}_${pieceType}`;
 }
@@ -167,76 +226,71 @@ function crownPiece(index) {}
 function movePiece(fromIdx, toIdx) {
   const [player, pieceType] = removePiece(fromIdx).split("_");
   addPiece(toIdx, player, pieceType);
+  switchPlayerTurn();
+  unselectPiece();
+  // render();
 }
 
 function hasDoubleJump(fromIdx) {}
 
+// Needs integration with getEmptyDiagonalNeighbors + later with jumps and double-jumps
 function getLegalMoves(index) {
   const rowIndex = getRowIndex(index);
   const cell = boardCells[index];
 }
 
+/*
+  selectPiece(cellIndex):
+  Changes the data store's selected piece index to reflect piece clicked 
+*/
 function selectPiece(cellIndex) {
-  if (selectedPiece !== null) {
-    const selectedPieceElem = boardCells[selectedPiece];
-    selectedPieceElem.classList.remove("selected");
-    document.querySelectorAll("div.cell.possible-move").forEach((elem) => {
-      elem.classList.remove("possible-move");
-    });
-  }
-  selectedPiece = cellIndex;
-  const selectedPieceElem = boardCells[selectedPiece];
-  selectedPieceElem.classList.add("selected");
-
+  selectedPieceIndex = cellIndex;
   const emptyNeighbors = getEmptyDiagonalNeighbors(cellIndex);
-  emptyNeighbors.forEach((cellIndex) => {
-    boardCells[cellIndex].classList.add("possible-move");
-  });
+  possibleMoveIndices.splice(0, possibleMoveIndices.length, ...emptyNeighbors);
+}
+
+function unselectPiece() {
+  selectedPieceIndex = null;
+  possibleMoveIndices.length = 0;
 }
 
 function checkForWinner() {}
 
 function checkForTie() {}
 
-function switchPlayerTurn() {}
+function switchPlayerTurn() {
+  turn = turn === players[0] ? players[1] : players[0];
+}
 
 initialize();
 
 /*===========================EVENT LISTENERS=======================*/
 
-function handlePieceClick(event) {
-  const clickedElem = event.target;
-  const cellIndex = clickedElem.parentNode.id * 1;
+function handleClick(event) {
+  const el = event.currentTarget;
+  const cellIndex = el.id * 1;
   const cell = boardCells[cellIndex];
   const isPiece = hasPiece(cellIndex);
   const cellValue = boardValues[cellIndex];
-  const isTurn = turn === cellValue.split("_")[0];
-  const adjRows = getAdjacentRows(cellIndex);
-  const adjCols = getAdjacentCols(cellIndex);
-  const neighbors = getDiagonalNeighbors(cellIndex);
-  const emptyNeighbors = getEmptyDiagonalNeighbors(cellIndex);
-  if (isPiece && isTurn) {
-    selectPiece(cellIndex);
-  }
+  const isTurn = cellValue && turn === cellValue.split("_")[0];
 
-  console.log(
-    `Clicked ${cellIndex}
-    Has piece: ${isPiece}
-    Cell value: ${cellValue}
-    Is player's turn: ${isTurn}
-    Adj Rows: ${adjRows}
-    Adj Cols: ${adjCols}
-    Neighboring Cells: ${neighbors}
-    Empty Diagonal Neighbors: ${emptyNeighbors}
-    `
-  );
+  console.log(`Board clicked at cell ${cellIndex}.
+     isPiece: ${isPiece}
+     cellValue: ${cellValue}`);
+  if (isPiece && isTurn) {
+    unselectPiece();
+    selectPiece(cellIndex);
+  } else if (possibleMoveIndices.includes(cellIndex)) {
+    console.log(`Clicked in possible move square ${cellIndex}`);
+    movePiece(selectedPieceIndex, cellIndex);
+  }
 
   checkForWinner();
   checkForTie();
-  switchPlayerTurn();
+  // updateSelected();
   render();
 }
 
-document.querySelectorAll("#game div.cell > div").forEach((cell) => {
-  cell.addEventListener("click", handlePieceClick);
+document.querySelectorAll("#game div.cell").forEach((cell) => {
+  cell.addEventListener("click", handleClick);
 });

@@ -45,3 +45,9 @@ div.cell.has-piece.black > div {
 div.cell.has-piece.king > div {
   background-image: url("./checkers-crown.png");
 }
+
+div#message {
+  width: 500px;
+  height: 50px;
+  font-size: 2rem;
+}
