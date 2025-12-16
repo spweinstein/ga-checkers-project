@@ -41,6 +41,8 @@ function getColIndex(cellId) {
 }
 
 function getCellIndex(rowIndex, colIndex) {
+  if (rowIndex > 7 || rowIndex < 0 || colIndex > 7 || colIndex < 0)
+    return false;
   return rowIndex * 8 + colIndex;
 }
 
@@ -50,6 +52,13 @@ function getCellValue(cellIndex) {
 
 function isCellEmpty(cellIndex) {
   return getCellValue(cellIndex) === "";
+}
+
+function isCellEnemy(cellIndex) {
+  if (cellIndex === false) return false;
+  const cellVal = getCellValue(cellIndex);
+  if (cellVal === "") return false;
+  return cellVal.split("_")[0] !== turn;
 }
 
 function isInLastRow(cellId) {
@@ -212,15 +221,50 @@ function movePiece(fromIdx, toIdx) {
   addPiece(toIdx, player, pieceType);
   switchPlayerTurn();
   unselectPiece();
-  // render();
 }
 
 function hasDoubleJump(fromIdx) {}
+
+function getJumpMoves(index) {
+  const neighbors = getDiagonalNeighbors(index);
+  const originCoords = [getRowIndex(index), getColIndex(index)];
+  const [rowIdx, colIdx] = originCoords;
+  const jumps = neighbors
+    .map((captureCellId) => {
+      const [neighborRowIdx, neighborColIdx] = [
+        getRowIndex(captureCellId),
+        getColIndex(captureCellId),
+      ];
+      const [rowDiff, colDiff] = [
+        neighborRowIdx - rowIdx,
+        neighborColIdx - colIdx,
+      ];
+      const jumpCoords = [rowIdx + rowDiff * 2, colIdx + colDiff * 2];
+      const jumpToId = getCellIndex(...jumpCoords);
+      // console.log(rowDiff, colDiff);
+      return {
+        originCoords,
+        jumpCoords,
+        captureCellId,
+        jumpToId,
+      };
+    })
+    .filter((jump) => {
+      return (
+        isCellEnemy(jump.captureCellId) &&
+        jump.jumpToId !== false &&
+        isCellEmpty(jump.jumpToId)
+      );
+    });
+  return jumps;
+}
 
 // Needs integration with getEmptyDiagonalNeighbors + later with jumps and double-jumps
 function getLegalMoves(index) {
   const rowIndex = getRowIndex(index);
   const cell = boardCells[index];
+  const simpleMoves = getEmptyDiagonalNeighbors(index);
+  const jumpMoves = getJumpMoves(index);
 }
 
 /*
@@ -231,6 +275,7 @@ function selectPiece(cellIndex) {
   selectedPieceIndex = cellIndex;
   const emptyNeighbors = getEmptyDiagonalNeighbors(cellIndex);
   possibleMoveIndices.splice(0, possibleMoveIndices.length, ...emptyNeighbors);
+  getLegalMoves(cellIndex);
 }
 
 function unselectPiece() {
