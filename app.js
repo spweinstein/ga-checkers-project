@@ -14,12 +14,15 @@ let selectedPieceIndex = null;
 let winner = false;
 let isTie = false;
 let isJumping = false;
+let forcedCaptures = false;
 
 const state = {
   boardValues,
   boardCells,
   winner,
   isTie,
+  isJumping,
+  forcedCaptures,
   selectedPieceIndex,
   possibleMoveIndices,
   possibleJumps,
@@ -124,6 +127,7 @@ function initialize() {
   possibleMoveIndices.splice(0, possibleMoveIndices.length);
   clearPossibleJumps();
   for (let i = 0; i < 64; i++) {
+    removePiece(i);
     const isCellEven = i % 2 === 0;
     const rowIndex = getRowIndex(i);
     const isRowEven = rowIndex % 2 === 0;
@@ -166,11 +170,13 @@ function render() {
     // if so, update cell's classes to reflect this
     if (cellValue.startsWith(players[0])) {
       cell.classList.add("has-piece", players[0]);
+      cell.classList.remove(players[1]);
       if (cellValue.endsWith(pieceTypes[1])) {
         cell.classList.add(pieceTypes[1]);
       }
     } else if (cellValue.startsWith(players[1])) {
       cell.classList.add("has-piece", players[1]);
+      cell.classList.remove(players[0]);
       if (cellValue.endsWith(pieceTypes[1])) {
         cell.classList.add(pieceTypes[1]);
       }
@@ -314,7 +320,8 @@ function getLegalMoves(cellIndex) {
   const rowIndex = getRowIndex(cellIndex);
   const cell = boardCells[cellIndex];
   getJumpMoves(cellIndex);
-  if (Object.keys(possibleJumps).length !== 0) isJumping = true;
+  if (Object.keys(possibleJumps).length !== 0 && forcedCaptures)
+    isJumping = true;
 
   if (!isJumping) {
     const emptyNeighbors = getEmptyDiagonalNeighbors(cellIndex);
