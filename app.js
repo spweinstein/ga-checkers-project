@@ -444,3 +444,115 @@ function clearPlayerPieces(state, playerIdx = 0) {
   checkForTie(state);
   render(state);
 }
+
+/*==================UPGRADE TO RECURSIVE DFS THAT UNTANGLES GAME STATE LOGIC FROM UI*=============================*/
+
+/* 
+ generateTurnMoves(state)
+
+  Has to compute all full turn moves for the player to move, independent of piece
+  UI can then disregard possibleMoveIndices, possibleJumps and simply filter the moves returned by this method to those that start at the index of the cell that was clicked
+
+  Given {boardValues, turn}, return a list of possible move objects:
+   [{
+      from: starting index,
+      path: [start, ..., end],
+      captures: [] for simple moves, [idx1, idx2, ....] for jump sequences,
+      type: "simple" or "jump"
+   }]
+ */
+// function generateJumpSequences(
+//   state,
+//   pos = null,
+//   path = null,
+//   captures = null
+// ) {
+//   const { boardValues, turn } = state;
+//   const moves = [];
+
+//   // SEED
+//   if (pos === null) {
+//     for (let i = 0; i < boardValues.length; i++) {
+//       moves.push(
+//         ...generateJumpSequences(
+//           state,
+//           (pos = i),
+//           (path = [i]),
+//           (captures = [])
+//         )
+//       );
+//     }
+//     return moves;
+//   }
+
+//   return moves;
+// }
+
+// Returns list of possible single jumps from square at index pos
+
+function generateSingleJumps(state, pos) {
+  const { boardValues, turn } = state;
+  const moves = [];
+  console.log(pos, boardValues[pos]);
+  if (!boardValues[pos].startsWith(turn)) return moves;
+  const neighbors = getValidNeighbors(state, pos);
+  const [row, col] = [getRowIndex(pos), getColIndex(pos)];
+  for (const neighbor of neighbors) {
+    if (!isCellEnemy(state, neighbor)) continue;
+    const [landingRow, landingCol] = [
+      getRowIndex(neighbor),
+      getColIndex(neighbor),
+    ];
+    const [rowDiff, colDiff] = [landingRow - row, landingCol - col];
+    const jumpCoords = [row + rowDiff * 2, col + colDiff * 2];
+    // console.log(jumpCoords);
+    const jumpToId = getCellIndex(...jumpCoords);
+    if (jumpToId !== false && isCellEmpty(state, jumpToId)) {
+      moves.push({
+        path: [pos, jumpToId],
+        captures: [neighbor],
+        type: "jump",
+      });
+    }
+  }
+  return moves;
+}
+
+// Returns a list of modified 
+
+function generateContinuationJumps(state, move) {
+  const stateClone = structuredClone(state);
+  const curPos = move.path[move.path.length - 1];
+  const lastPos = move.path[move.path.length - 2];
+  stateClone.boardValues[curPos] = stateClone.boardValues[lastPos];
+  stateClone.boardValues[lastPos] = "";
+  move.captures.forEach((cell) => (stateClone.boardValues[cell] = ""));
+  const continuationJumps = generateSingleJumps(stateClone, curPos);
+  return continuationJumps.map((continuationJump) => {
+    return {
+      path: [
+        ...move.path,
+        continuationJump.path[continuationJump.path.length - 1],
+      ],
+      captures: [
+        ...move.captures,
+        continuationJump.captures[continuationJump.captures.length - 1],
+      ],
+      type: "jump",
+    };
+  });
+}
+// Pseudocode for DFS:
+
+// jumpDFS(state, move, results):
+//   continuations = generateContinuationJumps(state, move)
+
+//   if continuations is empty:
+//     // no further jumps possible from the landing square
+//     add move to results
+//     return
+
+//   for each nextMove in continuations:
+//     jumpDFS(state, nextMove, results)
+
+function jumpDFS(state, pos, path, captures) {}
