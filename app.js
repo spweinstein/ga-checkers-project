@@ -490,10 +490,10 @@ function clearPlayerPieces(state, playerIdx = 0) {
 
 // Returns list of possible single jumps from square at index pos
 
-function generateSingleJumps(state, pos) {
+function findSingleJumps(state, pos) {
   const { boardValues, turn } = state;
   const moves = [];
-  console.log(pos, boardValues[pos]);
+  // console.log(pos, boardValues[pos]);
   if (!boardValues[pos].startsWith(turn)) return moves;
   const neighbors = getValidNeighbors(state, pos);
   const [row, col] = [getRowIndex(pos), getColIndex(pos)];
@@ -518,16 +518,16 @@ function generateSingleJumps(state, pos) {
   return moves;
 }
 
-// Returns a list of modified 
+// Returns a list of modified
 
-function generateContinuationJumps(state, move) {
+function findContinuationJumps(state, move) {
   const stateClone = structuredClone(state);
   const curPos = move.path[move.path.length - 1];
   const lastPos = move.path[move.path.length - 2];
   stateClone.boardValues[curPos] = stateClone.boardValues[lastPos];
   stateClone.boardValues[lastPos] = "";
   move.captures.forEach((cell) => (stateClone.boardValues[cell] = ""));
-  const continuationJumps = generateSingleJumps(stateClone, curPos);
+  const continuationJumps = findSingleJumps(stateClone, curPos);
   return continuationJumps.map((continuationJump) => {
     return {
       path: [
@@ -555,4 +555,36 @@ function generateContinuationJumps(state, move) {
 //   for each nextMove in continuations:
 //     jumpDFS(state, nextMove, results)
 
-function jumpDFS(state, pos, path, captures) {}
+function jumpDFS(state, move, results) {
+  const continuations = findContinuationJumps(state, move);
+  if (continuations.length === 0) {
+    results.push(move);
+    return results;
+  }
+
+  for (const nextMove of continuations) {
+    jumpDFS(state, nextMove, results);
+  }
+}
+
+// findAllPaths(state):
+//   results = []
+
+//   for each pieceIndex that belongs to state.turn:
+//     firstJumps = generateSingleJumps(state, pieceIndex)
+
+//     for each jumpMove in firstJumps:
+//       jumpDFS(state, jumpMove, results)
+
+//   return results
+
+function findAllJumpPaths(state) {
+  const results = [];
+  state.boardValues.forEach((cellValue, cellIndex) => {
+    const jumps = findSingleJumps(state, cellIndex);
+    jumps.forEach((jump, idx) => {
+      jumpDFS(state, jump, results);
+    });
+  });
+  return results;
+}
