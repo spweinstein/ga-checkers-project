@@ -63,9 +63,10 @@ function isCellEnemy(state, cellIndex) {
 
 function isInLastRow(state, cellId) {
   const rowIndex = getRowIndex(cellId);
+  const player = getCellValue(state, cellId).split("_")[0];
   return (
-    (state.turn === players[0] && rowIndex === 7) ||
-    (state.turn === players[1] && rowIndex === 0)
+    (player === players[0] && rowIndex === 7) ||
+    (player === players[1] && rowIndex === 0)
   );
 }
 
@@ -530,47 +531,6 @@ function clearPlayerPieces(state, playerIdx = 0) {
 
 /*==================UPGRADE TO RECURSIVE DFS THAT UNTANGLES GAME STATE LOGIC FROM UI*=============================*/
 
-/* 
- generateTurnMoves(state)
-
-  Has to compute all full turn moves for the player to move, independent of piece
-  UI can then disregard possibleMoveIndices, possibleJumps and simply filter the moves returned by this method to those that start at the index of the cell that was clicked
-
-  Given {boardValues, turn}, return a list of possible move objects:
-   [{
-      from: starting index,
-      path: [start, ..., end],
-      captures: [] for simple moves, [idx1, idx2, ....] for jump sequences,
-      type: "simple" or "jump"
-   }]
- */
-// function generateJumpSequences(
-//   state,
-//   pos = null,
-//   path = null,
-//   captures = null
-// ) {
-//   const { boardValues, turn } = state;
-//   const moves = [];
-
-//   // SEED
-//   if (pos === null) {
-//     for (let i = 0; i < boardValues.length; i++) {
-//       moves.push(
-//         ...generateJumpSequences(
-//           state,
-//           (pos = i),
-//           (path = [i]),
-//           (captures = [])
-//         )
-//       );
-//     }
-//     return moves;
-//   }
-
-//   return moves;
-// }
-
 // Apply a complete move to the state
 // Takes the full path and all captures, returns new state
 function applyMove(state, move) {
@@ -580,7 +540,7 @@ function applyMove(state, move) {
 
   // Move the piece from start to end
   stateClone.boardValues[endPos] = stateClone.boardValues[startPos];
-  stateClone.boardValues[startPos] = "";
+  if (endPos !== startPos) stateClone.boardValues[startPos] = "";
 
   // Remove all captured pieces
   move.captures.forEach((cell) => (stateClone.boardValues[cell] = ""));
