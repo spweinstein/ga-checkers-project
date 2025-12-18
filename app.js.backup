@@ -27,7 +27,7 @@ const state = {
 
 const ui = {};
 
-/*===========================ENGINE HELPERS (GRID + RULES)=======================*/
+/*===========================GRID HELPER FUNCTIONS=======================*/
 
 function getRowIndex(cellId) {
   return Math.floor(cellId / 8);
@@ -113,8 +113,112 @@ function getValidNeighbors(state, cell) {
   return neighbors;
 }
 
-/*===========================ENGINE CORE=======================*/
+/*===========================INITIALIZATION=======================*/
 
+function initialize(state) {
+  state.winner = false;
+  state.isTie = false;
+  ui.selectedPieceIndex = null;
+  ui.possibleMoveIndices = [];
+  ui.possibleJumps = {};
+  state.legalMoves = [];
+  state.boardValues = [];
+  state.players = ["White", "Black"];
+  state.pieceTypes = ["Regular", "King"];
+  state.turn = state.players[0];
+  state.isJumping = false;
+  state.forcedCaptures = false;
+  for (let i = 0; i < 64; i++) {
+    // removePiece(state, i);
+    const isCellEven = i % 2 === 0;
+    const rowIndex = getRowIndex(i);
+    const isRowEven = rowIndex % 2 === 0;
+    const cell = boardCells[i];
+    const isPlayer1 = rowIndex < 3;
+    const isPlayer2 = rowIndex > 4;
+    const isPiece =
+      (isPlayer1 || isPlayer2) &&
+      ((isRowEven && isCellEven) || (!isRowEven && !isCellEven));
+    const isDark = (isRowEven && isCellEven) || (!isRowEven && !isCellEven);
+
+    if (isPlayer1 && isPiece) {
+      addPiece(state, i, players[0], "Regular");
+    } else if (isPlayer2 && isPiece) {
+      addPiece(state, i, players[1], "Regular");
+    } else {
+      removePiece(state, i);
+    }
+
+    if (isDark) {
+      cell.classList.add("dark");
+      // playableIndices.push(i);
+    }
+  }
+  // updateLegalMoves(state);
+  state.legalMoves = generateAllLegalMoves(state);
+  render(state);
+}
+
+/*===========================RENDER=======================*/
+
+function updateMessage(msg) {
+  msgCell.textContent = msg;
+}
+
+function render(state) {
+  console.log("Rendering...");
+  boardCells.forEach((cell, index) => {
+    const cellValue = state.boardValues[index];
+
+    // check if cell has a piece
+    // if so, update cell's classes to reflect this
+    if (cellValue.startsWith(state.players[0])) {
+      cell.classList.add("has-piece", state.players[0]);
+      cell.classList.remove(state.players[1]);
+      if (cellValue.endsWith(state.pieceTypes[1])) {
+        cell.classList.add(state.pieceTypes[1]);
+      }
+    } else if (cellValue.startsWith(state.players[1])) {
+      cell.classList.add("has-piece", state.players[1]);
+      cell.classList.remove(state.players[0]);
+      if (cellValue.endsWith(state.pieceTypes[1])) {
+        cell.classList.add(state.pieceTypes[1]);
+      }
+    } else {
+      cell.classList.remove(
+        "has-piece",
+        state.players[1],
+        state.players[0],
+        state.pieceTypes[1]
+      );
+    }
+
+    // check if cell is selected
+    // if so, update class to reflect this
+    if (index === ui.selectedPieceIndex) cell.classList.add("selected");
+    else cell.classList.remove("selected");
+    // check if cell is a possible mvoe
+    // if so, update class to reflect this
+    if (ui.possibleMoveIndices.includes(index) || index in ui.possibleJumps)
+      cell.classList.add("possible-move");
+    else cell.classList.remove("possible-move");
+
+    //check if cell is king and change to reflect
+    if (cellValue.includes("King")) {
+      cell.classList.add("King");
+    } else {
+      cell.classList.remove("King");
+    }
+  });
+
+  if (state.winner)
+    updateMessage(
+      `Congratulations, player ${state.winner}! Hit reset to play again.`
+    );
+  else updateMessage(`It is player ${state.turn}'s turn`);
+}
+
+/*===========================LOGIC=======================*/
 function addPiece(state, index, player, pieceType) {
   state.boardValues[index] = `${player}_${pieceType}`;
 }
@@ -259,6 +363,52 @@ function updateLegalMoves(state, activeCellIdx = null) {
   }
 }
 
+/*
+  selectPiece(cellIndex):
+  Changes the data store's selected piece index to reflect piece clicked 
+*/
+// function selectPiece(state, cellIndex) {
+//   console.log(`Selecting piece ${cellIndex}...`);
+//   state.selectedPieceIndex = cellIndex;
+//   state.possibleMoveIndices = state.legalMoves
+//     .filter((m) => m.type === "regular" && m.from === cellIndex)
+//     .map((m) => m.to);
+
+//   state.possibleJumps = {};
+//   state.legalMoves
+//     .filter((m) => m.type === "jump" && m.from === cellIndex)
+//     .forEach((move) => {
+//       state.possibleJumps[move.to] = move;
+//     });
+// }
+
+// Updated to use dfs
+function selectPiece(state, cellIndex) {
+  ui.selectedPieceIndex = cellIndex;
+
+  // Filter moves that start from this cell
+  const pieceMoves = state.legalMoves.filter((m) => m.path[0] === cellIndex);
+
+  // Separate for UI rendering
+  ui.possibleMoveIndices = pieceMoves
+    .filter((m) => m.type === "regular")
+    .map((m) => m.path[m.path.length - 1]);
+
+  ui.possibleJumps = {};
+  pieceMoves
+    .filter((m) => m.type === "jump")
+    .forEach((move) => {
+      ui.possibleJumps[move.path[move.path.length - 1]] = move;
+    });
+}
+
+function unselectPiece(state) {
+  ui.selectedPieceIndex = null;
+  ui.possibleMoveIndices = [];
+  ui.possibleJumps = {};
+  // state.legalMoves = [];
+}
+
 function checkForWinner(state) {
   const boardString = state.boardValues.join(" ");
   if (!boardString.includes(state.players[0])) {
@@ -277,6 +427,108 @@ function switchPlayerTurn(state) {
   // updateLegalMoves(state);
   state.legalMoves = generateAllLegalMoves(state);
 }
+
+initialize(state);
+
+/*===========================EVENT LISTENERS=======================*/
+
+// function handleClick(event) {
+//   if (state.winner) return;
+//   const el = event.currentTarget;
+//   const cellIndex = el.id * 1;
+//   const cell = boardCells[cellIndex];
+//   const isPiece = hasPiece(state, cellIndex);
+//   const cellValue = state.boardValues[cellIndex];
+//   const isTurn = cellValue && state.turn === cellValue.split("_")[0];
+
+//   console.log(`Board clicked at cell ${cellIndex}.
+//      isPiece: ${isPiece}
+//      cellValue: ${cellValue}`);
+//   if (isPiece && isTurn) {
+//     unselectPiece(state);
+//     selectPiece(state, cellIndex);
+//   } else {
+//     // Find the move object that matches this click
+//     const selectedMove = state.legalMoves.find(
+//       (m) => m.from === state.selectedPieceIndex && m.to === cellIndex
+//     );
+
+//     if (selectedMove) {
+//       if (selectedMove.type === "regular") {
+//         console.log(
+//           `Regular move from ${selectedMove.from} to ${selectedMove.to}`
+//         );
+//         basicMove(state, selectedMove.from, selectedMove.to);
+//       } else if (selectedMove.type === "jump") {
+//         console.log(
+//           `Jump from ${selectedMove.from} to ${selectedMove.to}, capturing ${selectedMove.captures}`
+//         );
+//         jumpMove(state, selectedMove);
+//       }
+//     }
+//   }
+//   render(state);
+// }
+
+function handleClick(event) {
+  if (state.winner) return;
+  const el = event.currentTarget;
+  const cellIndex = el.id * 1;
+  const isPiece = hasPiece(state, cellIndex);
+  const cellValue = state.boardValues[cellIndex];
+  const isTurn = cellValue && state.turn === cellValue.split("_")[0];
+
+  console.log(`Board clicked at cell ${cellIndex}.
+     isPiece: ${isPiece}
+     cellValue: ${cellValue}`);
+
+  if (isPiece && isTurn) {
+    unselectPiece(state);
+    selectPiece(state, cellIndex);
+  } else {
+    // Find the move object that matches this click
+    const selectedMove = state.legalMoves.find(
+      (m) =>
+        m.path[0] === ui.selectedPieceIndex &&
+        m.path[m.path.length - 1] === cellIndex
+    );
+
+    if (selectedMove) {
+      console.log(
+        `Executing ${selectedMove.type} move: ${selectedMove.path.join(
+          " -> "
+        )}${
+          selectedMove.captures.length > 0
+            ? `, capturing ${selectedMove.captures}`
+            : ""
+        }`
+      );
+      executeMove(state, selectedMove);
+    }
+  }
+  render(state);
+}
+
+document.querySelectorAll("#game div.cell").forEach((cell) => {
+  cell.addEventListener("click", handleClick);
+});
+
+document
+  .querySelector("#reset")
+  .addEventListener("click", () => initialize(state));
+
+/*=================TEST FUNCTIONS======*/
+
+function clearPlayerPieces(state, playerIdx = 0) {
+  state.boardValues.forEach((val, i) => {
+    if (val.includes(state.players[playerIdx])) state.boardValues[i] = "";
+  });
+  checkForWinner(state);
+  checkForTie(state);
+  render(state);
+}
+
+/*==================UPGRADE TO RECURSIVE DFS THAT UNTANGLES GAME STATE LOGIC FROM UI*=============================*/
 
 // Apply a complete move to the state
 // Takes the full path and all captures, returns new state
@@ -405,268 +657,4 @@ function generateAllLegalMoves(state) {
   }
 
   return [...regularMoves, ...jumpPaths];
-}
-
-function initializeGame(state) {
-  state.winner = false;
-  state.isTie = false;
-  ui.selectedPieceIndex = null;
-  ui.possibleMoveIndices = [];
-  ui.possibleJumps = {};
-  state.legalMoves = [];
-  state.boardValues = [];
-  state.players = ["White", "Black"];
-  state.pieceTypes = ["Regular", "King"];
-  state.turn = state.players[0];
-  state.isJumping = false;
-  state.forcedCaptures = false;
-  for (let i = 0; i < 64; i++) {
-    // removePiece(state, i);
-    const isCellEven = i % 2 === 0;
-    const rowIndex = getRowIndex(i);
-    const isRowEven = rowIndex % 2 === 0;
-    const cell = boardCells[i];
-    const isPlayer1 = rowIndex < 3;
-    const isPlayer2 = rowIndex > 4;
-    const isPiece =
-      (isPlayer1 || isPlayer2) &&
-      ((isRowEven && isCellEven) || (!isRowEven && !isCellEven));
-    const isDark = (isRowEven && isCellEven) || (!isRowEven && !isCellEven);
-
-    if (isPlayer1 && isPiece) {
-      addPiece(state, i, players[0], "Regular");
-    } else if (isPlayer2 && isPiece) {
-      addPiece(state, i, players[1], "Regular");
-    } else {
-      removePiece(state, i);
-    }
-  }
-  // updateLegalMoves(state);
-  state.legalMoves = generateAllLegalMoves(state);
-}
-
-function initializeUI(state) {
-  for (let i = 0; i < 64; i++) {
-    const isCellEven = i % 2 === 0;
-    const rowIndex = getRowIndex(i);
-    const isRowEven = rowIndex % 2 === 0;
-    const cell = boardCells[i];
-    const isDark = (isRowEven && isCellEven) || (!isRowEven && !isCellEven);
-
-    if (isDark) {
-      cell.classList.add("dark");
-      // playableIndices.push(i);
-    }
-  }
-}
-
-function initialize(state) {
-  initializeGame(state);
-  initializeUI(state);
-  render(state);
-}
-
-/*===========================UI=======================*/
-
-function updateMessage(msg) {
-  msgCell.textContent = msg;
-}
-
-function render(state) {
-  console.log("Rendering...");
-  boardCells.forEach((cell, index) => {
-    const cellValue = state.boardValues[index];
-
-    // check if cell has a piece
-    // if so, update cell's classes to reflect this
-    if (cellValue.startsWith(state.players[0])) {
-      cell.classList.add("has-piece", state.players[0]);
-      cell.classList.remove(state.players[1]);
-      if (cellValue.endsWith(state.pieceTypes[1])) {
-        cell.classList.add(state.pieceTypes[1]);
-      }
-    } else if (cellValue.startsWith(state.players[1])) {
-      cell.classList.add("has-piece", state.players[1]);
-      cell.classList.remove(state.players[0]);
-      if (cellValue.endsWith(state.pieceTypes[1])) {
-        cell.classList.add(state.pieceTypes[1]);
-      }
-    } else {
-      cell.classList.remove(
-        "has-piece",
-        state.players[1],
-        state.players[0],
-        state.pieceTypes[1]
-      );
-    }
-
-    // check if cell is selected
-    // if so, update class to reflect this
-    if (index === ui.selectedPieceIndex) cell.classList.add("selected");
-    else cell.classList.remove("selected");
-    // check if cell is a possible mvoe
-    // if so, update class to reflect this
-    if (ui.possibleMoveIndices.includes(index) || index in ui.possibleJumps)
-      cell.classList.add("possible-move");
-    else cell.classList.remove("possible-move");
-
-    //check if cell is king and change to reflect
-    if (cellValue.includes("King")) {
-      cell.classList.add("King");
-    } else {
-      cell.classList.remove("King");
-    }
-  });
-
-  if (state.winner)
-    updateMessage(
-      `Congratulations, player ${state.winner}! Hit reset to play again.`
-    );
-  else updateMessage(`It is player ${state.turn}'s turn`);
-}
-
-/*
-  selectPiece(cellIndex):
-  Changes the data store's selected piece index to reflect piece clicked 
-*/
-// function selectPiece(state, cellIndex) {
-//   console.log(`Selecting piece ${cellIndex}...`);
-//   state.selectedPieceIndex = cellIndex;
-//   state.possibleMoveIndices = state.legalMoves
-//     .filter((m) => m.type === "regular" && m.from === cellIndex)
-//     .map((m) => m.to);
-
-//   state.possibleJumps = {};
-//   state.legalMoves
-//     .filter((m) => m.type === "jump" && m.from === cellIndex)
-//     .forEach((move) => {
-//       state.possibleJumps[move.to] = move;
-//     });
-// }
-
-// Updated to use dfs
-function selectPiece(state, cellIndex) {
-  ui.selectedPieceIndex = cellIndex;
-
-  // Filter moves that start from this cell
-  const pieceMoves = state.legalMoves.filter((m) => m.path[0] === cellIndex);
-
-  // Separate for UI rendering
-  ui.possibleMoveIndices = pieceMoves
-    .filter((m) => m.type === "regular")
-    .map((m) => m.path[m.path.length - 1]);
-
-  ui.possibleJumps = {};
-  pieceMoves
-    .filter((m) => m.type === "jump")
-    .forEach((move) => {
-      ui.possibleJumps[move.path[move.path.length - 1]] = move;
-    });
-}
-
-function unselectPiece(state) {
-  ui.selectedPieceIndex = null;
-  ui.possibleMoveIndices = [];
-  ui.possibleJumps = {};
-  // state.legalMoves = [];
-}
-
-initialize(state);
-
-/*===========================EVENT LISTENERS=======================*/
-
-// function handleClick(event) {
-//   if (state.winner) return;
-//   const el = event.currentTarget;
-//   const cellIndex = el.id * 1;
-//   const cell = boardCells[cellIndex];
-//   const isPiece = hasPiece(state, cellIndex);
-//   const cellValue = state.boardValues[cellIndex];
-//   const isTurn = cellValue && state.turn === cellValue.split("_")[0];
-
-//   console.log(`Board clicked at cell ${cellIndex}.
-//      isPiece: ${isPiece}
-//      cellValue: ${cellValue}`);
-//   if (isPiece && isTurn) {
-//     unselectPiece(state);
-//     selectPiece(state, cellIndex);
-//   } else {
-//     // Find the move object that matches this click
-//     const selectedMove = state.legalMoves.find(
-//       (m) => m.from === state.selectedPieceIndex && m.to === cellIndex
-//     );
-
-//     if (selectedMove) {
-//       if (selectedMove.type === "regular") {
-//         console.log(
-//           `Regular move from ${selectedMove.from} to ${selectedMove.to}`
-//         );
-//         basicMove(state, selectedMove.from, selectedMove.to);
-//       } else if (selectedMove.type === "jump") {
-//         console.log(
-//           `Jump from ${selectedMove.from} to ${selectedMove.to}, capturing ${selectedMove.captures}`
-//         );
-//         jumpMove(state, selectedMove);
-//       }
-//     }
-//   }
-//   render(state);
-// }
-
-function handleClick(event) {
-  if (state.winner) return;
-  const el = event.currentTarget;
-  const cellIndex = el.id * 1;
-  const isPiece = hasPiece(state, cellIndex);
-  const cellValue = state.boardValues[cellIndex];
-  const isTurn = cellValue && state.turn === cellValue.split("_")[0];
-
-  console.log(`Board clicked at cell ${cellIndex}.
-     isPiece: ${isPiece}
-     cellValue: ${cellValue}`);
-
-  if (isPiece && isTurn) {
-    unselectPiece(state);
-    selectPiece(state, cellIndex);
-  } else {
-    // Find the move object that matches this click
-    const selectedMove = state.legalMoves.find(
-      (m) =>
-        m.path[0] === ui.selectedPieceIndex &&
-        m.path[m.path.length - 1] === cellIndex
-    );
-
-    if (selectedMove) {
-      console.log(
-        `Executing ${selectedMove.type} move: ${selectedMove.path.join(
-          " -> "
-        )}${
-          selectedMove.captures.length > 0
-            ? `, capturing ${selectedMove.captures}`
-            : ""
-        }`
-      );
-      executeMove(state, selectedMove);
-    }
-  }
-  render(state);
-}
-
-document.querySelectorAll("#game div.cell").forEach((cell) => {
-  cell.addEventListener("click", handleClick);
-});
-
-document
-  .querySelector("#reset")
-  .addEventListener("click", () => initialize(state));
-
-/*===========================TEST HELPERS=======================*/
-
-function clearPlayerPieces(state, playerIdx = 0) {
-  state.boardValues.forEach((val, i) => {
-    if (val.includes(state.players[playerIdx])) state.boardValues[i] = "";
-  });
-  checkForWinner(state);
-  checkForTie(state);
-  render(state);
 }
