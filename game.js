@@ -119,7 +119,7 @@ function movePiece(state, fromIdx, toIdx) {
   }
 }
 
-function executeMove(state, ui, move, unselectFn) {
+function executeMove(state, ui, move, onMoveComplete) {
   // Apply full path
   const startPos = move.path[0];
   const endPos = move.path[move.path.length - 1];
@@ -137,7 +137,7 @@ function executeMove(state, ui, move, unselectFn) {
 
   // Clean up and switch turn
   switchPlayerTurn(state);
-  unselectFn(state, ui);
+  onMoveComplete(state, ui);
   checkForWinner(state);
   checkForTie(state);
 }

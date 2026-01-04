@@ -159,7 +159,6 @@ function unselectPiece(state, ui) {
   ui.selectedPieceIndex = null;
   ui.possibleMoveIndices = [];
   ui.possibleJumps = {};
-  // state.legalMoves = [];
 }
 
 /*===========================EVENT HANDLERS=======================*/
@@ -213,9 +212,6 @@ function handleStartJumpSeq(state, ui, cellIndex) {
   // Apply first hop
   movePiece(state, from, to);
   removePiece(state, captured);
-  // if (isInLastRow(state, to)) {
-  //   crownPiece(state, to);
-  // }
 
   // Enter capture mode
   ui.isCapturing = true;
@@ -259,9 +255,6 @@ function handleContinueJumpSeq(state, ui, cellIndex) {
   // Apply hop
   movePiece(state, from, to);
   removePiece(state, captured);
-  // if (isInLastRow(state, to)) {
-  //   crownPiece(state, to);
-  // }
 
   // Update capture state
   ui.capturePos = to;
