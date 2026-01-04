@@ -77,7 +77,7 @@ function getValidNeighbors(state, cell) {
   const neighbors = adjRows
     .map((rowIdx) => {
       return adjCols.map((colIdx) => {
-        return getCellIndex(rowIdx, colIdx); //[rowIdx, colIdx];
+        return getCellIndex(rowIdx, colIdx);
       });
     })
     .flat();
@@ -321,8 +321,6 @@ function initializeGame(state) {
 }
 
 export {
-  players,
-  pieceTypes,
   getRowIndex,
   getColIndex,
   getCellIndex,
