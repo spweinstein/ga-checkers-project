@@ -36,7 +36,6 @@ function initializeUI(state, ui) {
 
     if (isDark) {
       cell.classList.add("dark");
-      // playableIndices.push(i);
     }
   }
 }

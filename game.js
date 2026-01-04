@@ -49,7 +49,6 @@ function isOnBoard(idx) {
   return idx >= 0 && idx <= 7;
 }
 
-//add backwards king functionality later
 function getValidMoveRows(state, cellId) {
   const rowIndex = getRowIndex(cellId);
   const cellValue = state.boardValues[cellId];
@@ -102,13 +101,10 @@ function removePiece(state, index) {
 }
 
 function crownPiece(state, index) {
-  // if (isInLastRow(index)) {
   state.boardValues[index] = state.boardValues[index].replace(
     "Regular",
     "King"
   );
-  // boardCells[index].querySelector("div").textContent = "King";
-  // }
 }
 
 function movePiece(state, fromIdx, toIdx) {
@@ -161,7 +157,6 @@ function checkForTie(state) {
 function switchPlayerTurn(state) {
   state.turn =
     state.turn === state.players[0] ? state.players[1] : state.players[0];
-  // updateLegalMoves(state);
   state.legalMoves = generateAllLegalMoves(state);
 }
 
@@ -322,7 +317,6 @@ function initializeGame(state) {
       removePiece(state, i);
     }
   }
-  // updateLegalMoves(state);
   state.legalMoves = generateAllLegalMoves(state);
 }
 
